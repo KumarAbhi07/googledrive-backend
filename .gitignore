@@ -1,2 +1,4 @@
 .env
 node_modules
+test-apis.ps1
+TEST-RESULTS.md

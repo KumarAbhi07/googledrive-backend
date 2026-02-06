@@ -53,6 +53,17 @@ app.use(passport.session());
 app.use("/api/auth", authRoutes);
 app.use("/api/files", fileRoutes);
 
+app.get("/", (req, res) => {
+  res.json({ 
+    message: "Google Drive Clone API", 
+    status: "running",
+    endpoints: {
+      health: "/api/health",
+      auth: "/api/auth",
+      files: "/api/files"
+    }
+  });
+});
 
 app.get("/api/health", (req, res) => {
   res.json({ message: "Server is running" });

@@ -5,66 +5,36 @@ import crypto from "crypto";
 import nodemailer from "nodemailer";
 
 export const register = async (req, res) => {
-  const { email, firstName, lastName, password } = req.body;
+  const { name, email, password } = req.body;
 
   try {
+    console.log("Registration attempt:", { name, email });
+
+    if (!name || !email || !password) {
+      console.log("Validation failed - missing fields");
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
+      console.log("Email already exists:", email);
+      return res.status(400).json({ message: "Email already registered" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const activationToken = crypto.randomBytes(32).toString("hex");
 
-    const user = await User.create({
+    const newUser = await User.create({
+      name,
       email,
-      firstName,
-      lastName,
       password: hashedPassword,
-      activationToken,
+      isActive: true,
     });
 
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-
-    const activationLink = `${process.env.CLIENT_URL}/activate/${activationToken}`;
-
-    await transporter.sendMail({
-      to: email,
-      subject: "Activate your Google Drive account",
-      html: `<p>Click to activate:</p><a href="${activationLink}">${activationLink}</a>`,
-    });
-
-    res.status(201).json({
-      message: "Registration successful. Check email to activate account.",
-    });
+    console.log("User created successfully:", newUser._id);
+    res.status(201).json({ message: "Registration successful. You can now login.", email });
   } catch (err) {
-    res.status(500).json({ message: "Registration failed" });
-  }
-};
-
-export const activateAccount = async (req, res) => {
-  const { token } = req.params;
-
-  try {
-    const user = await User.findOne({ activationToken: token });
-
-    if (!user) {
-      return res.status(400).json({ message: "Invalid activation token" });
-    }
-
-    user.isActive = true;
-    user.activationToken = null;
-    await user.save();
-
-    res.json({ message: "Account activated successfully" });
-  } catch (err) {
-    res.status(500).json({ message: "Activation failed" });
+    console.error("Registration error:", err);
+    res.status(500).json({ message: "Registration failed", error: err.message });
   }
 };
 
@@ -78,10 +48,6 @@ export const login = async (req, res) => {
       return res.status(400).json({ message: "User not found" });
     }
 
-    if (!user.isActive) {
-      return res.status(403).json({ message: "Please activate your account" });
-    }
-
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid credentials" });
@@ -93,7 +59,7 @@ export const login = async (req, res) => {
       { expiresIn: "1d" }
     );
 
-    res.json({ token });
+    res.json({ token, name: user.name });
   } catch (err) {
     res.status(500).json({ message: "Login failed" });
   }
@@ -158,22 +124,5 @@ export const resetPassword = async (req, res) => {
     res.json({ message: "Password reset successful" });
   } catch (err) {
     res.status(500).json({ message: "Password reset failed" });
-  }
-};
-
-// TEST ENDPOINT - Remove in production
-export const testActivate = async (req, res) => {
-  const { email } = req.body;
-  try {
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-    user.isActive = true;
-    user.activationToken = null;
-    await user.save();
-    res.json({ message: "User activated for testing" });
-  } catch (err) {
-    res.status(500).json({ message: "Activation failed" });
   }
 };

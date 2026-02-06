@@ -5,6 +5,7 @@ import {
   uploadFile,
   getUserFiles,
   downloadFile,
+  deleteFile,
 } from "../controllers/file.controller.js";
 
 const router = express.Router();
@@ -12,5 +13,6 @@ const router = express.Router();
 router.post("/upload", authMiddleware, upload.single("file"), uploadFile);
 router.get("/", authMiddleware, getUserFiles);
 router.get("/download/:fileId", authMiddleware, downloadFile);
+router.delete("/:fileId", authMiddleware, deleteFile);
 
 export default router;
